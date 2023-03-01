@@ -1,0 +1,84 @@
+// swiftlint:disable all
+// Generated using SwiftGen — https://github.com/SwiftGen/SwiftGen
+// This is a custom template generated colors in extension of Color for a convenient using base on SwiftGen template swift5
+{# All avaible parameters: #}
+{# allValues = for printing a constant of all colors #}
+{# isUsingSPM = for printing init extension for using Bundle.module #}
+{# publicAccess = for printing public access modifier for example for SPM #}
+
+{# Implementations #}
+{% set accessModifier %}{% if param.publicAccess %}public {% endif %}{% endset %}
+{# Macro to printing cases or folder with flag "Provides Namespace" in the atributes inspector and create tree of enumarations with extra parameters "shouldHaveAccessModifier" #}
+{# It's for printing access control modifier in nested enumarations because in the extension is redudant #}
+{% macro recursiveBlock assets shouldHaveAccessModifier %}
+    {% for asset in assets %}
+    {% if asset.type == "color" %}
+    {% set currentAccessModifier %}{% if shouldHaveAccessModifier %}{{ accessModifier }}{% endif %}{% endset %}
+    {{ currentAccessModifier }}static let {{asset.name|swiftIdentifier:"pretty"|lowerFirstWord|escapeReservedKeywords}} = Color( "{{asset.value}}")
+    {% elif asset.items and asset.isNamespaced == "true" %}
+
+    enum {{asset.name|swiftIdentifier:"pretty"|escapeReservedKeywords}} {
+        {% filter indent:4," ",true %}{% call recursiveBlock asset.items true %}{% endfilter %}
+    }
+    {% elif asset.items %}
+    {% call recursiveBlock asset.items true %}
+    {% endif %}
+    {% endfor %}
+{% endmacro %}
+{# If set parameter "allValues" to true it's going create static constants of array o  #}
+{% macro allValuesBlock assets filter prefix %}
+    {% for asset in assets %}
+    {% if asset.type == filter %}
+    {{prefix}}{{asset.name|swiftIdentifier:"pretty"|lowerFirstWord|escapeReservedKeywords}},
+    {% elif asset.items and asset.isNamespaced == "true" %}
+    {% set prefix2 %}{{prefix}}{{asset.name|swiftIdentifier:"pretty"|escapeReservedKeywords}}.{% endset %}
+    {% call allValuesBlock asset.items filter prefix2 %}
+    {% elif asset.items %}
+    {% call allValuesBlock asset.items filter prefix %}
+    {% endif %}
+    {% endfor %}
+{% endmacro %}
+{# Just convenient macro to check if should create constants for all colors #}
+{% macro enumBlock assets %}
+    {% call recursiveBlock assets false %}
+    {% if param.allValues %}
+
+    static let allColors: [Color] = [
+        {% filter indent:4," ",true %}{% call allValuesBlock assets "color" "" %}{% endfilter %}
+    ]
+    {% endif %}
+{% endmacro %}
+{# Implementations #}
+{# body #}
+{% if catalogs %}
+import SwiftUI
+
+// MARK: - Color+
+
+{{ accessModifier }}extension Color {
+    {% if catalogs.count > 1 %}
+    {% for catalog in catalogs %}
+
+    enum {{catalog.name|swiftIdentifier:"pretty"|escapeReservedKeywords}} {
+        {% if catalog.assets %} {% call recursiveBlock assets %}
+        {% filter indent:4," ",true %}{% call enumBlock catalog.assets %}{% endfilter %}
+        {% endif %}
+    }
+    {% endfor %}
+    {% else %}
+    {% call enumBlock catalogs.first.assets %}
+    {% endif %}
+}
+{% if param.isUsingSPM %}
+
+{{ accessModifier }}extension Color {
+    init(_ name: String) {
+        self.init(name, bundle: Bundle.module)
+    }
+}
+{% endif %}
+{% else %}
+// No colors found
+{% endif %}
+// swiftlint:enable all
+{# body #}
